@@ -33,6 +33,7 @@ const toRequest = (song: Song, serverId: string): OfflineDownloadRequest => ({
     container: song.container,
     key: offlineKey(serverId, song.id),
     serverId,
+    song,
     songId: song.id,
     url: api.controller.getDownloadUrl({
         apiClientProps: { serverId },
@@ -45,6 +46,7 @@ const toPending = (song: Song, serverId: string): OfflineSong => ({
     key: offlineKey(serverId, song.id),
     receivedBytes: 0,
     serverId,
+    song,
     songId: song.id,
     status: 'pending',
     totalBytes: 0,

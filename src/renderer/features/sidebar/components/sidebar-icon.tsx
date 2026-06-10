@@ -1,6 +1,8 @@
 import {
     RiAlbumFill,
     RiAlbumLine,
+    RiDownload2Fill,
+    RiDownload2Line,
     RiFlag2Fill,
     RiFlag2Line,
     RiFolder3Fill,
@@ -66,6 +68,9 @@ export const SidebarIcon = ({ active, route, size }: SidebarIconProps) => {
             case AppRoute.NOW_PLAYING:
                 if (isActive) return <RiPlayFill size={size} />;
                 return <RiPlayLine size={size} />;
+            case AppRoute.OFFLINE:
+                if (isActive) return <RiDownload2Fill size={size} />;
+                return <RiDownload2Line size={size} />;
             case AppRoute.PLAYLISTS:
                 if (isActive) return <RiPlayListFill size={size} />;
                 return <RiPlayListLine size={size} />;

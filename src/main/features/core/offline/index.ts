@@ -148,7 +148,7 @@ const safeUnlink = async (filePath: string): Promise<void> => {
 };
 
 const downloadOne = async (request: OfflineDownloadRequest): Promise<void> => {
-    const { container, key, serverId, songId, url } = request;
+    const { container, key, serverId, song, songId, url } = request;
     const controller = new AbortController();
     activeControllers.set(key, controller);
 
@@ -226,6 +226,7 @@ const downloadOne = async (request: OfflineDownloadRequest): Promise<void> => {
             relativePath,
             serverId,
             size: stat.size,
+            song,
             songId,
         };
         setRecord(record);
@@ -278,8 +279,16 @@ const enqueue = (requests: OfflineDownloadRequest[]): void => {
     for (const request of requests) {
         const alreadyQueued = queue.some((item) => item.key === request.key);
         const inProgress = activeControllers.has(request.key);
-        const alreadyDownloaded = Boolean(getRecord(request.key));
-        if (alreadyQueued || inProgress || alreadyDownloaded) {
+        const existing = getRecord(request.key);
+        if (existing) {
+            // Backfill song metadata for files downloaded before metadata was
+            // stored, so they can be browsed/played offline without re-downloading.
+            if (!existing.song && request.song) {
+                setRecord({ ...existing, song: request.song });
+            }
+            continue;
+        }
+        if (alreadyQueued || inProgress) {
             continue;
         }
         queue.push(request);

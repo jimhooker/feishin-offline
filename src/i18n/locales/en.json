@@ -649,12 +649,17 @@
             "search": "$t(common.search)",
             "settings": "$t(common.setting, {\"count\": 2})",
             "shared": "Shared $t(entity.playlist, {\"count\": 2})",
-            "tracks": "$t(entity.track, {\"count\": 2})"
+            "tracks": "$t(entity.track, {\"count\": 2})",
+            "offline": "Offline"
         },
         "trackList": {
             "artistTracks": "Tracks by {{artist}}",
             "genreTracks": "\"{{genre}}\" $t(entity.track, {\"count\": 2})",
             "title": "$t(entity.track, {\"count\": 2})"
+        },
+        "offline": {
+            "title": "Offline",
+            "description": "Playlists and albums available without a connection."
         }
     },
     "player": {
@@ -1431,6 +1436,9 @@
         "resync": "Re-sync",
         "resynced": "Offline content re-synced",
         "storage": "Storage used",
-        "storageUsage": "{{count}} tracks · {{size}}"
+        "storageUsage": "{{count}} tracks · {{size}}",
+        "offlineModeActive": "You're offline — only downloaded music is available.",
+        "listenOffline": "Listen to downloads",
+        "queue": "Queue"
     }
 }

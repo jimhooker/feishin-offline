@@ -5,10 +5,16 @@ import isEqual from 'lodash/isEqual';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
+import i18n from '/@/i18n/i18n';
 import { api } from '/@/renderer/api';
 import { controller } from '/@/renderer/api/controller';
 import { AppRoute } from '/@/renderer/router/routes';
-import { getServerById, useAuthStoreActions, useCurrentServerId } from '/@/renderer/store';
+import {
+    getServerById,
+    useAuthStoreActions,
+    useCurrentServerId,
+    useOfflineStore,
+} from '/@/renderer/store';
 import { LogCategory, logFn } from '/@/renderer/utils/logger';
 import { logMsg } from '/@/renderer/utils/logger-message';
 import { toast } from '/@/shared/components/toast/toast';
@@ -317,6 +323,25 @@ export const useServerAuthenticated = () => {
                     });
 
                     // Don't clear credentials on network failure - preserve them for when network returns
+
+                    // If the user has downloaded content, let them into the app
+                    // (in offline mode) to play it instead of trapping them on
+                    // the no-network screen.
+                    const hasOfflineDownloads =
+                        Object.keys(useOfflineStore.getState().collections).length > 0;
+
+                    if (hasOfflineDownloads) {
+                        setReady(AuthState.VALID);
+                        navigateRef.current(AppRoute.OFFLINE, { replace: true });
+                        toast.info({
+                            message: i18n.t('offline.offlineModeActive', {
+                                defaultValue:
+                                    "You're offline — only downloaded music is available.",
+                            }),
+                        });
+                        return;
+                    }
+
                     setReady(AuthState.INVALID);
                     navigateRef.current(AppRoute.NO_NETWORK, { replace: true });
                     return;

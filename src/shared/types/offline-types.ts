@@ -2,13 +2,18 @@
 // These are used across the Electron main process, the preload bridge, and the
 // renderer, so they must not import anything process-specific.
 
+import { Song } from '/@/shared/types/domain-types';
+
 export type OfflineCollectionType = 'album' | 'playlist';
 
 // A request sent from the renderer to the main process to download a track.
+// `song` carries the full track metadata so downloaded content can be browsed
+// and played without a server connection.
 export interface OfflineDownloadRequest {
     container: null | string;
     key: string;
     serverId: string;
+    song: Song;
     songId: string;
     url: string;
 }
@@ -42,6 +47,7 @@ export interface OfflineSongRecord {
     relativePath: string;
     serverId: string;
     size: number;
+    song: Song;
     songId: string;
 }
 

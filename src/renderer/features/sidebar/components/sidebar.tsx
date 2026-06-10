@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import isElectron from 'is-electron';
 import { AnimatePresence, motion } from 'motion/react';
 import { MouseEvent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +22,7 @@ import {
     SidebarSharedPlaylistList,
     useSidebarPlaylistAddDragMonitor,
 } from '/@/renderer/features/sidebar/components/sidebar-playlist-list';
+import { AppRoute } from '/@/renderer/router/routes';
 import {
     useAppStore,
     useAppStoreActions,
@@ -150,6 +152,14 @@ export const Sidebar = () => {
                                     </SidebarItem>
                                 );
                             })}
+                            {isElectron() && (
+                                <SidebarItem to={AppRoute.OFFLINE}>
+                                    <Group gap="md">
+                                        <SidebarIcon route={AppRoute.OFFLINE} />
+                                        {t('page.sidebar.offline', { defaultValue: 'Offline' })}
+                                    </Group>
+                                </SidebarItem>
+                            )}
                         </Accordion.Panel>
                     </Accordion.Item>
                     <SidebarCollectionList />

@@ -5,8 +5,10 @@ import { PageHeader } from '/@/renderer/components/page-header/page-header';
 import { AnimatedPage } from '/@/renderer/features/shared/components/animated-page';
 import { PageErrorBoundary } from '/@/renderer/features/shared/components/page-error-boundary';
 import { AppRoute } from '/@/renderer/router/routes';
+import { useOfflineCollections } from '/@/renderer/store';
 import { Button } from '/@/shared/components/button/button';
 import { Center } from '/@/shared/components/center/center';
+import { Group } from '/@/shared/components/group/group';
 import { Icon } from '/@/shared/components/icon/icon';
 import { Stack } from '/@/shared/components/stack/stack';
 import { Text } from '/@/shared/components/text/text';
@@ -14,6 +16,8 @@ import { Text } from '/@/shared/components/text/text';
 const NoNetworkRoute = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const collections = useOfflineCollections();
+    const hasDownloads = Object.keys(collections).length > 0;
 
     const handleRetry = () => {
         // Navigate to home which will trigger authentication again
@@ -34,13 +38,26 @@ const NoNetworkRoute = () => {
                             {t('error.noNetworkDescription')}
                         </Text>
                     </Stack>
-                    <Button
-                        leftSection={<Icon icon="refresh" />}
-                        onClick={handleRetry}
-                        variant="filled"
-                    >
-                        {t('common.retry')}
-                    </Button>
+                    <Group gap="sm">
+                        <Button
+                            leftSection={<Icon icon="refresh" />}
+                            onClick={handleRetry}
+                            variant="filled"
+                        >
+                            {t('common.retry')}
+                        </Button>
+                        {hasDownloads && (
+                            <Button
+                                leftSection={<Icon icon="download" />}
+                                onClick={() => navigate(AppRoute.OFFLINE)}
+                                variant="default"
+                            >
+                                {t('offline.listenOffline', {
+                                    defaultValue: 'Listen to downloads',
+                                })}
+                            </Button>
+                        )}
+                    </Group>
                 </Stack>
             </Center>
         </AnimatedPage>

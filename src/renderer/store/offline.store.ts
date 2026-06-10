@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import { shallow } from 'zustand/shallow';
 import { createWithEqualityFn } from 'zustand/traditional';
 
+import { Song } from '/@/shared/types/domain-types';
 import {
     OfflineCollectionType,
     offlineKey,
@@ -28,6 +29,7 @@ export interface OfflineSong {
     key: string;
     receivedBytes: number;
     serverId: string;
+    song?: Song;
     songId: string;
     status: OfflineSongStatus;
     totalBytes: number;
@@ -69,6 +71,7 @@ export const useOfflineStore = createWithEqualityFn<OfflineSlice>()(
                                     key: record.key,
                                     receivedBytes: record.size,
                                     serverId: record.serverId,
+                                    song: record.song,
                                     songId: record.songId,
                                     status: 'complete',
                                     totalBytes: record.size,
@@ -121,6 +124,7 @@ export const useOfflineStore = createWithEqualityFn<OfflineSlice>()(
                                 key: progress.key,
                                 receivedBytes: progress.receivedBytes,
                                 serverId: progress.serverId,
+                                song: state.songs[progress.key]?.song,
                                 songId: progress.songId,
                                 status: progress.status,
                                 totalBytes: progress.totalBytes,
@@ -135,8 +139,14 @@ export const useOfflineStore = createWithEqualityFn<OfflineSlice>()(
                     upsertSongs: (songs) => {
                         set((state) => {
                             for (const song of songs) {
-                                // Do not downgrade an already-complete download.
-                                if (state.songs[song.key]?.status === 'complete') {
+                                const existing = state.songs[song.key];
+                                // Do not downgrade an already-complete download, but
+                                // backfill missing metadata (for files downloaded
+                                // before song metadata was tracked).
+                                if (existing?.status === 'complete') {
+                                    if (!existing.song && song.song) {
+                                        existing.song = song.song;
+                                    }
                                     continue;
                                 }
                                 state.songs[song.key] = song;
@@ -170,3 +180,13 @@ export const useOfflineSong = (key: string) => useOfflineStore((state) => state.
 // Non-hook accessor for use inside the playback URL resolver.
 export const getOfflineSong = (serverId: string, songId: string): OfflineSong | undefined =>
     useOfflineStore.getState().songs[offlineKey(serverId, songId)];
+
+// Returns the fully-downloaded songs (with metadata) for the given keys, in
+// order, suitable for building a play queue while offline.
+export const getDownloadedSongs = (songKeys: string[]): Song[] => {
+    const { songs } = useOfflineStore.getState();
+    return songKeys
+        .map((key) => songs[key])
+        .filter((song): song is OfflineSong => Boolean(song?.song) && song?.status === 'complete')
+        .map((song) => song.song as Song);
+};
