@@ -170,7 +170,9 @@
         "gridRows": "Grid rows",
         "tableColumns": "Table columns",
         "itemsMore": "{{count}} more",
-        "newVersionAvailable": "A new version is available"
+        "newVersionAvailable": "A new version is available",
+        "change": "Change",
+        "remove": "Remove"
     },
     "entity": {
         "album_one": "Album",
@@ -628,7 +630,8 @@
             "transcoding": "Transcoding",
             "discord": "Discord",
             "logger": "Logger",
-            "playerFilters": "Player Filters"
+            "playerFilters": "Player Filters",
+            "offlineTab": "Offline"
         },
         "sidebar": {
             "albumArtists": "$t(entity.albumArtist, {\"count\": 2})",
@@ -1412,5 +1415,22 @@
                 "z": "Z"
             }
         }
+    },
+    "offline": {
+        "collectionMeta": "{{type}} · {{complete}}/{{total}} tracks",
+        "downloadAction": "Download for offline",
+        "downloadError": "Failed to start offline download",
+        "downloadFolder": "Download folder",
+        "downloadStarted": "Downloading {{count}} tracks for offline use",
+        "downloads": "Downloads",
+        "empty": "Nothing to download",
+        "folderChanged": "Download folder updated",
+        "noDownloads": "No offline downloads yet. Right-click a playlist or album and choose \"Download for offline\".",
+        "openFolder": "Open folder",
+        "removed": "Removed from offline downloads",
+        "resync": "Re-sync",
+        "resynced": "Offline content re-synced",
+        "storage": "Storage used",
+        "storageUsage": "{{count}} tracks · {{size}}"
     }
 }

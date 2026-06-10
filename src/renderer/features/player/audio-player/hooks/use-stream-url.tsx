@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 
 import { api } from '/@/renderer/api';
+import { getOfflinePlaybackUrl } from '/@/renderer/features/offline/offline-utils';
 import { TranscodingConfig } from '/@/renderer/store';
 import { QueueSong } from '/@/shared/types/domain-types';
 
@@ -11,12 +12,13 @@ export function useSongUrl(
     transcode: Partial<TranscodingConfig>,
 ): string | undefined {
     const prior = useRef(['', '']);
+    const offlineUrl = getOfflinePlaybackUrl(song);
     const shouldReusePrior = Boolean(
         song?._serverId && current && prior.current[0] === song._uniqueId && prior.current[1],
     );
 
     const { data: queryStreamUrl } = useQuery({
-        enabled: Boolean(song?._serverId) && !shouldReusePrior,
+        enabled: Boolean(song?._serverId) && !shouldReusePrior && !offlineUrl,
         queryFn: () =>
             api.controller.getStreamUrl({
                 apiClientProps: { serverId: song!._serverId },
@@ -58,6 +60,10 @@ export function useSongUrl(
         }
     }, [song?._serverId]);
 
+    if (offlineUrl) {
+        return offlineUrl;
+    }
+
     return shouldReusePrior ? prior.current[1] : queryStreamUrl;
 }
 
@@ -66,6 +72,11 @@ export const getSongUrl = async (
     transcode: Partial<TranscodingConfig>,
     skipAutoTranscode?: boolean,
 ) => {
+    const offlineUrl = getOfflinePlaybackUrl(song);
+    if (offlineUrl) {
+        return offlineUrl;
+    }
+
     const url = await api.controller.getStreamUrl({
         apiClientProps: { serverId: song._serverId },
         query: {

@@ -10,6 +10,7 @@ import isElectron from 'is-electron';
 import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import i18n from '/@/i18n/i18n';
+import { useOfflineSync } from '/@/renderer/features/offline/use-offline-sync';
 import { WebAudioContext } from '/@/renderer/features/player/context/webaudio-context';
 import { useCheckForUpdates } from '/@/renderer/hooks/use-check-for-updates';
 import { useNativeMenuSync } from '/@/renderer/hooks/use-native-menu-sync';
@@ -101,8 +102,15 @@ const AppEffects = () => (
         <LanguageEffect />
         <NativeMenuSyncEffect />
         <InputFocusEffect />
+        <OfflineSyncEffect />
     </>
 );
+
+const OfflineSyncEffect = () => {
+    useOfflineSync();
+
+    return null;
+};
 
 const SyncSettingsEffect = () => {
     useSyncSettingsToMain();

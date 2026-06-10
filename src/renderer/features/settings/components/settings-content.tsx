@@ -37,6 +37,12 @@ const AdvancedTab = lazy(() =>
     })),
 );
 
+const OfflineTab = lazy(() =>
+    import('/@/renderer/features/settings/components/offline/offline-tab').then((module) => ({
+        default: module.OfflineTab,
+    })),
+);
+
 export const SettingsContent = () => {
     const { t } = useTranslation();
     const currentTab = useSettingsStore((state) => state.tab);
@@ -59,6 +65,11 @@ export const SettingsContent = () => {
                         {isElectron() && (
                             <Tabs.Tab value="window">{t('page.setting.windowTab')}</Tabs.Tab>
                         )}
+                        {isElectron() && (
+                            <Tabs.Tab value="offline">
+                                {t('page.setting.offlineTab', { defaultValue: 'Offline' })}
+                            </Tabs.Tab>
+                        )}
                         <Tabs.Tab value="advanced">{t('page.setting.advanced')}</Tabs.Tab>
                     </Tabs.List>
                     <Tabs.Panel value="general">
@@ -80,6 +91,13 @@ export const SettingsContent = () => {
                         <Tabs.Panel value="window">
                             <Suspense fallback={<Spinner container />}>
                                 <WindowTab />
+                            </Suspense>
+                        </Tabs.Panel>
+                    )}
+                    {isElectron() && (
+                        <Tabs.Panel value="offline">
+                            <Suspense fallback={<Spinner container />}>
+                                <OfflineTab />
                             </Suspense>
                         </Tabs.Panel>
                     )}

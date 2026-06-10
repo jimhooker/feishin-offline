@@ -28,6 +28,7 @@ import path, { join } from 'path';
 import semver from 'semver';
 
 import packageJson from '../../package.json';
+import { isOfflineRequest, serveOfflineRequest } from './features/core/offline';
 import { disableMediaKeys, enableMediaKeys } from './features/core/player/media-keys';
 import { shutdownServer } from './features/core/remote';
 import { store } from './features/core/settings';
@@ -1038,7 +1039,13 @@ if (!singleInstance) {
 
     app.whenReady()
         .then(() => {
-            protocol.handle('feishin', async () => {
+            protocol.handle('feishin', async (request) => {
+                // Offline downloaded audio is served from disk for the web/HTML5
+                // audio player, which cannot load file:// URLs directly.
+                if (isOfflineRequest(request.url)) {
+                    return serveOfflineRequest(request);
+                }
+
                 const filePath = store.get('local_font_path');
                 if (typeof filePath !== 'string') {
                     getMainWindow()?.webContents.send('custom-font-error', filePath);
