@@ -25,23 +25,41 @@ const localSettings = isElectron() ? window.api.localSettings : null;
 const MIN_AUTH_DELAY_MS = 1000;
 const MAX_NETWORK_RETRIES = 1;
 const NETWORK_RETRY_DELAY_MS = 500;
+// Hard cap on the startup auth request so a disconnected/unreachable server
+// cannot hang the app on the loading spinner forever.
+const AUTH_REQUEST_TIMEOUT_MS = 8000;
 
 const isNetworkError = (error: any): boolean => {
+    // Device is offline — no request can succeed.
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return true;
+    }
+
     const message =
-        error.message && typeof error.message === 'string' ? (error.message as string) : null;
+        error?.message && typeof error.message === 'string' ? (error.message as string) : null;
     const messageLower = message?.toLowerCase();
 
     if (messageLower?.includes('network') || messageLower?.includes('timeout')) {
         return true;
     }
 
-    return (
-        isAxiosError(error) &&
-        (error.code === 'ERR_NETWORK' ||
+    if (isAxiosError(error)) {
+        // No HTTP response means the server was never reached (offline,
+        // connection refused, DNS failure, aborted/timed-out request, etc.).
+        if (!error.response) {
+            return true;
+        }
+
+        return (
+            error.code === 'ERR_NETWORK' ||
             error.code === 'ECONNABORTED' ||
+            error.code === 'ECONNREFUSED' ||
             error.code === 'ETIMEDOUT' ||
-            !navigator.onLine)
-    );
+            error.code === 'ERR_CANCELED'
+        );
+    }
+
+    return false;
 };
 
 export const useServerAuthenticated = () => {
@@ -58,12 +76,43 @@ export const useServerAuthenticated = () => {
         navigateRef.current = navigate;
     }, [navigate]);
 
+    // Server could not be reached. If downloads exist, open in offline mode so
+    // they remain playable; otherwise show the no-network screen. Credentials
+    // are intentionally preserved for when the network returns.
+    const handleServerUnreachable = useCallback(() => {
+        const offlineState = useOfflineStore.getState();
+        const hasOfflineDownloads =
+            Object.keys(offlineState.collections).length > 0 ||
+            Object.values(offlineState.songs).some((song) => song.status === 'complete');
+
+        if (hasOfflineDownloads) {
+            setReady(AuthState.VALID);
+            navigateRef.current(AppRoute.OFFLINE, { replace: true });
+            toast.info({
+                message: i18n.t('offline.offlineModeActive', {
+                    defaultValue: "You're offline — only downloaded music is available.",
+                }),
+            });
+            return;
+        }
+
+        setReady(AuthState.INVALID);
+        navigateRef.current(AppRoute.NO_NETWORK, { replace: true });
+    }, []);
+
     const authenticateServer = useCallback(
         async (serverWithAuth: NonNullable<ReturnType<typeof getServerById>>, retryAttempt = 0) => {
             const authStartTime = Date.now();
 
             try {
                 setReady(AuthState.LOADING);
+
+                // If the device is offline, skip the network request entirely —
+                // it would otherwise hang and trap the app on the spinner.
+                if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                    handleServerUnreachable();
+                    return;
+                }
 
                 // Use userId if available, otherwise fall back to username (for Subsonic/Navidrome)
                 const userId = serverWithAuth.userId || serverWithAuth.username;
@@ -87,6 +136,7 @@ export const useServerAuthenticated = () => {
                     const userInfo = await api.controller.getUserInfo({
                         apiClientProps: {
                             serverId: serverWithAuth.id,
+                            signal: AbortSignal.timeout(AUTH_REQUEST_TIMEOUT_MS),
                         },
                         query: {
                             id: userId,
@@ -280,10 +330,12 @@ export const useServerAuthenticated = () => {
                 }
             } catch (error) {
                 const errorMessage = (error as Error).message || 'Authentication failed';
-                const isNetwork = isNetworkError(error);
+                // Treat any failure where the server was never reached (offline,
+                // connection refused, DNS failure, timeout/abort) as unreachable.
+                const serverUnreachable = isNetworkError(error) || !(error as any)?.response;
 
-                // If it's a network error and we haven't exhausted retries, retry
-                if (isNetwork && retryAttempt < MAX_NETWORK_RETRIES) {
+                // If the server couldn't be reached and retries remain, retry once.
+                if (serverUnreachable && retryAttempt < MAX_NETWORK_RETRIES) {
                     const nextRetry = retryAttempt + 1;
 
                     logFn.warn(logMsg[LogCategory.SYSTEM].serverAuthenticationFailed, {
@@ -308,8 +360,9 @@ export const useServerAuthenticated = () => {
                     return authenticateServer(serverWithAuth, nextRetry);
                 }
 
-                // If network error and retries exhausted, redirect to no-network page
-                if (isNetwork && retryAttempt >= MAX_NETWORK_RETRIES) {
+                // Server unreachable, retries exhausted: open offline mode (if
+                // downloads exist) or show the no-network screen.
+                if (serverUnreachable) {
                     logFn.error(logMsg[LogCategory.SYSTEM].serverAuthenticationFailed, {
                         category: LogCategory.SYSTEM,
                         meta: {
@@ -322,28 +375,7 @@ export const useServerAuthenticated = () => {
                         },
                     });
 
-                    // Don't clear credentials on network failure - preserve them for when network returns
-
-                    // If the user has downloaded content, let them into the app
-                    // (in offline mode) to play it instead of trapping them on
-                    // the no-network screen.
-                    const hasOfflineDownloads =
-                        Object.keys(useOfflineStore.getState().collections).length > 0;
-
-                    if (hasOfflineDownloads) {
-                        setReady(AuthState.VALID);
-                        navigateRef.current(AppRoute.OFFLINE, { replace: true });
-                        toast.info({
-                            message: i18n.t('offline.offlineModeActive', {
-                                defaultValue:
-                                    "You're offline — only downloaded music is available.",
-                            }),
-                        });
-                        return;
-                    }
-
-                    setReady(AuthState.INVALID);
-                    navigateRef.current(AppRoute.NO_NETWORK, { replace: true });
+                    handleServerUnreachable();
                     return;
                 }
 
@@ -372,7 +404,7 @@ export const useServerAuthenticated = () => {
                 setReady(AuthState.INVALID);
             }
         },
-        [updateServer, setCurrentServer],
+        [updateServer, setCurrentServer, handleServerUnreachable],
     );
 
     const debouncedAuth = useMemo(
