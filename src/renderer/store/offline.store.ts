@@ -180,13 +180,3 @@ export const useOfflineSong = (key: string) => useOfflineStore((state) => state.
 // Non-hook accessor for use inside the playback URL resolver.
 export const getOfflineSong = (serverId: string, songId: string): OfflineSong | undefined =>
     useOfflineStore.getState().songs[offlineKey(serverId, songId)];
-
-// Returns the fully-downloaded songs (with metadata) for the given keys, in
-// order, suitable for building a play queue while offline.
-export const getDownloadedSongs = (songKeys: string[]): Song[] => {
-    const { songs } = useOfflineStore.getState();
-    return songKeys
-        .map((key) => songs[key])
-        .filter((song): song is OfflineSong => Boolean(song?.song) && song?.status === 'complete')
-        .map((song) => song.song as Song);
-};

@@ -23,11 +23,14 @@ import { AuthState } from '/@/shared/types/types';
 const localSettings = isElectron() ? window.api.localSettings : null;
 
 const MIN_AUTH_DELAY_MS = 1000;
-const MAX_NETWORK_RETRIES = 1;
+// No retry on startup: when the server is unreachable we want to fall back to
+// offline mode quickly rather than waiting out a second timeout.
+const MAX_NETWORK_RETRIES = 0;
 const NETWORK_RETRY_DELAY_MS = 500;
-// Hard cap on the startup auth request so a disconnected/unreachable server
-// cannot hang the app on the loading spinner forever.
-const AUTH_REQUEST_TIMEOUT_MS = 8000;
+// Hard cap on the startup auth request. Kept short so an unreachable server
+// (e.g. navigator.onLine incorrectly reporting "online" while disconnected)
+// falls back to offline mode quickly instead of hanging.
+const AUTH_REQUEST_TIMEOUT_MS = 3000;
 
 const isNetworkError = (error: any): boolean => {
     // Device is offline — no request can succeed.

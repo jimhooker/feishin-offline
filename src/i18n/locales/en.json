@@ -1439,6 +1439,7 @@
         "storageUsage": "{{count}} tracks · {{size}}",
         "offlineModeActive": "You're offline — only downloaded music is available.",
         "listenOffline": "Listen to downloads",
-        "queue": "Queue"
+        "queue": "Queue",
+        "noTracksDownloaded": "No downloaded tracks yet."
     }
 }

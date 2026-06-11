@@ -3,18 +3,15 @@ import { useTranslation } from 'react-i18next';
 
 import { useOfflineDownload } from '/@/renderer/features/offline/use-offline-download';
 import { usePlayer } from '/@/renderer/features/player/context/player-context';
-import {
-    getDownloadedSongs,
-    OfflineCollection,
-    useOfflineCollections,
-    useOfflineSongs,
-} from '/@/renderer/store';
+import { OfflineCollection, useOfflineCollections, useOfflineSongs } from '/@/renderer/store';
+import { formatDurationString } from '/@/renderer/utils';
 import { Button } from '/@/shared/components/button/button';
 import { Group } from '/@/shared/components/group/group';
 import { Icon } from '/@/shared/components/icon/icon';
 import { Progress } from '/@/shared/components/progress/progress';
 import { Stack } from '/@/shared/components/stack/stack';
 import { Text } from '/@/shared/components/text/text';
+import { Song } from '/@/shared/types/domain-types';
 import { Play } from '/@/shared/types/types';
 
 interface CollectionProgress {
@@ -31,10 +28,21 @@ export const OfflineCollectionList = memo(() => {
     const player = usePlayer();
     const { remove, resync } = useOfflineDownload();
     const [busyKey, setBusyKey] = useState<null | string>(null);
+    const [expandedKeys, setExpandedKeys] = useState<ReadonlySet<string>>(() => new Set());
 
     const list = useMemo(
         () => Object.values(collections).sort((a, b) => b.addedAt - a.addedAt),
         [collections],
+    );
+
+    // The downloaded songs (with metadata) for a collection, in order.
+    const getCollectionSongs = useCallback(
+        (collection: OfflineCollection): Song[] =>
+            collection.songKeys
+                .map((key) => songs[key])
+                .filter((song) => Boolean(song?.song) && song?.status === 'complete')
+                .map((song) => song!.song as Song),
+        [songs],
     );
 
     const getProgress = useCallback(
@@ -65,15 +73,27 @@ export const OfflineCollectionList = memo(() => {
         [songs],
     );
 
+    const toggleExpanded = useCallback((key: string) => {
+        setExpandedKeys((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) {
+                next.delete(key);
+            } else {
+                next.add(key);
+            }
+            return next;
+        });
+    }, []);
+
     const handlePlay = useCallback(
-        (collection: OfflineCollection, type: Play) => {
-            const downloaded = getDownloadedSongs(collection.songKeys);
+        (collection: OfflineCollection, type: Play, playSongId?: string) => {
+            const downloaded = getCollectionSongs(collection);
             if (downloaded.length === 0) {
                 return;
             }
-            player.addToQueueByData(downloaded, type);
+            player.addToQueueByData(downloaded, type, playSongId);
         },
-        [player],
+        [getCollectionSongs, player],
     );
 
     const handleResync = useCallback(
@@ -116,25 +136,37 @@ export const OfflineCollectionList = memo(() => {
             {list.map((collection) => {
                 const progress = getProgress(collection);
                 const isBusy = busyKey === collection.key;
+                const isExpanded = expandedKeys.has(collection.key);
                 const hasDownloads = progress.complete > 0;
+                const collectionSongs = isExpanded ? getCollectionSongs(collection) : [];
 
                 return (
                     <Stack gap="xs" key={collection.key}>
                         <Group justify="space-between" wrap="nowrap">
-                            <Stack gap={2} style={{ minWidth: 0 }}>
-                                <Text overflow="hidden">{collection.name}</Text>
-                                <Text isMuted size="sm">
-                                    {t('offline.collectionMeta', {
-                                        complete: progress.complete,
-                                        defaultValue: '{{type}} · {{complete}}/{{total}} tracks',
-                                        total: progress.total,
-                                        type: t(`entity.${collection.type}`, {
-                                            count: 1,
-                                            defaultValue: collection.type,
-                                        }),
-                                    })}
-                                </Text>
-                            </Stack>
+                            <Group
+                                gap="xs"
+                                onClick={() => toggleExpanded(collection.key)}
+                                role="button"
+                                style={{ cursor: 'pointer', minWidth: 0 }}
+                                wrap="nowrap"
+                            >
+                                <Icon icon={isExpanded ? 'arrowDownS' : 'arrowRightS'} />
+                                <Stack gap={2} style={{ minWidth: 0 }}>
+                                    <Text overflow="hidden">{collection.name}</Text>
+                                    <Text isMuted size="sm">
+                                        {t('offline.collectionMeta', {
+                                            complete: progress.complete,
+                                            defaultValue:
+                                                '{{type}} · {{complete}}/{{total}} tracks',
+                                            total: progress.total,
+                                            type: t(`entity.${collection.type}`, {
+                                                count: 1,
+                                                defaultValue: collection.type,
+                                            }),
+                                        })}
+                                    </Text>
+                                </Stack>
+                            </Group>
                             <Group gap="sm" wrap="nowrap">
                                 <Button
                                     disabled={!hasDownloads}
@@ -175,6 +207,51 @@ export const OfflineCollectionList = memo(() => {
                             </Group>
                         </Group>
                         {progress.complete < progress.total && <Progress value={progress.pct} />}
+                        {isExpanded && (
+                            <Stack gap={0} pl="2rem">
+                                {collectionSongs.length === 0 ? (
+                                    <Text isMuted py="xs" size="sm">
+                                        {t('offline.noTracksDownloaded', {
+                                            defaultValue: 'No downloaded tracks yet.',
+                                        })}
+                                    </Text>
+                                ) : (
+                                    collectionSongs.map((song, index) => (
+                                        <Group
+                                            gap="md"
+                                            key={song.id}
+                                            onClick={() =>
+                                                handlePlay(collection, Play.NOW, song.id)
+                                            }
+                                            role="button"
+                                            style={{
+                                                borderRadius: 'var(--theme-card-default-radius)',
+                                                cursor: 'pointer',
+                                                padding: '0.35rem 0.5rem',
+                                            }}
+                                            wrap="nowrap"
+                                        >
+                                            <Text isMuted size="sm" style={{ width: '1.5rem' }}>
+                                                {index + 1}
+                                            </Text>
+                                            <Text
+                                                overflow="hidden"
+                                                size="sm"
+                                                style={{ flex: 1, minWidth: 0 }}
+                                            >
+                                                {song.name}
+                                            </Text>
+                                            <Text isMuted overflow="hidden" size="sm">
+                                                {song.artistName || song.artists?.[0]?.name || ''}
+                                            </Text>
+                                            <Text isMuted size="sm">
+                                                {formatDurationString(song.duration)}
+                                            </Text>
+                                        </Group>
+                                    ))
+                                )}
+                            </Stack>
+                        )}
                     </Stack>
                 );
             })}
