@@ -68,7 +68,7 @@ toolsets:
 npmRebuild: false
 publish:
     provider: github
-    owner: jeffvli
-    repo: feishin
+    owner: jimhooker
+    repo: feishin-offline
     channel: beta
-    releaseType: draft
+    releaseType: release
