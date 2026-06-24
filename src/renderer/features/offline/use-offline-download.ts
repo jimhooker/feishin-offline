@@ -4,7 +4,11 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '/@/renderer/api';
-import { getAlbumSongsById, getPlaylistSongsById } from '/@/renderer/features/player/utils';
+import {
+    getAlbumSongsById,
+    getFavoriteSongs,
+    getPlaylistSongsById,
+} from '/@/renderer/features/player/utils';
 import {
     collectionKey,
     OfflineCollection,
@@ -75,6 +79,14 @@ export const useOfflineDownload = () => {
 
     const fetchCollectionSongs = useCallback(
         async (target: OfflineDownloadTarget): Promise<Song[]> => {
+            if (target.type === 'favorites') {
+                const res = await getFavoriteSongs({
+                    queryClient,
+                    serverId: target.serverId,
+                });
+                return res?.items ?? [];
+            }
+
             if (target.type === 'playlist') {
                 const res = await getPlaylistSongsById({
                     id: target.id,

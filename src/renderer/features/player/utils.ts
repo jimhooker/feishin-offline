@@ -93,6 +93,53 @@ export const getAlbumSongsById = async (args: {
     return res;
 };
 
+export const getFavoriteSongs = async (args: {
+    queryClient: QueryClient;
+    serverId: string;
+}): Promise<{ items: Song[] }> => {
+    const { queryClient, serverId } = args;
+
+    const limit = 500;
+    const items: Song[] = [];
+    let startIndex = 0;
+
+    // Favorites are a server-computed set and (on Navidrome) paginated, so page
+    // through until a short page comes back to capture every favorited track.
+    for (;;) {
+        const queryFilter: SongListQuery = {
+            favorite: true,
+            limit,
+            sortBy: SongListSort.ID,
+            sortOrder: SortOrder.ASC,
+            startIndex,
+        };
+
+        const res = await queryClient.fetchQuery({
+            gcTime: 1000 * 60,
+            queryFn: async ({ signal }) =>
+                api.controller.getSongList({
+                    apiClientProps: {
+                        serverId,
+                        signal,
+                    },
+                    query: queryFilter,
+                }),
+            queryKey: queryKeys.songs.list(serverId, queryFilter),
+            staleTime: 1000 * 60,
+        });
+
+        const batch = res?.items ?? [];
+        items.push(...batch);
+
+        if (batch.length < limit) {
+            break;
+        }
+        startIndex += limit;
+    }
+
+    return { items };
+};
+
 export const getGenreSongsById = async (args: {
     id: string[];
     orderByIds?: boolean;

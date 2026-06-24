@@ -8,6 +8,7 @@ import { AlbumListHeaderFilters } from '/@/renderer/features/albums/components/a
 import { useAlbumListFilters } from '/@/renderer/features/albums/hooks/use-album-list-filters';
 import { AlbumArtistListHeaderFilters } from '/@/renderer/features/artists/components/album-artist-list-header-filters';
 import { useAlbumArtistListFilters } from '/@/renderer/features/artists/hooks/use-album-artist-list-filters';
+import { FavoritesOfflineButton } from '/@/renderer/features/favorites/components/favorites-offline-button';
 import { FilterBar } from '/@/renderer/features/shared/components/filter-bar';
 import { LibraryHeaderBar } from '/@/renderer/features/shared/components/library-header-bar';
 import { ListSearchInput } from '/@/renderer/features/shared/components/list-search-input';
@@ -137,6 +138,7 @@ export const FavoritesHeader = ({ itemType }: FavoritesHeaderProps) => {
                         </LibraryHeaderBar.Badge>
                     </LibraryHeaderBar>
                     <Group>
+                        {itemType === LibraryItem.SONG && <FavoritesOfflineButton />}
                         <ListSearchInput />
                     </Group>
                 </Flex>

@@ -4,7 +4,7 @@
 
 import { Song } from '/@/shared/types/domain-types';
 
-export type OfflineCollectionType = 'album' | 'playlist';
+export type OfflineCollectionType = 'album' | 'favorites' | 'playlist';
 
 // A request sent from the renderer to the main process to download a track.
 // `song` carries the full track metadata so downloaded content can be browsed
